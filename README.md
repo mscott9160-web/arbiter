@@ -13,6 +13,7 @@ The repository currently contains the first contract slice:
 - Deterministic fake provider for non-streaming `/v1/chat/completions`
 - SSE token streaming with TTFT and total-latency metrics
 - Typed token cost calculator with fail-closed unknown-model behavior
+- Asynchronous batched ledger writer with retry and store-owned idempotency
 - Offline smoke check in `scripts/smoke.py`
 - Pricing values intentionally omitted until human-reviewed source evidence is supplied
 
@@ -41,6 +42,8 @@ It starts the WebFlux application on a random port and verifies `GET /health`.
 The current gateway slice verifies local requests through the fake provider. Streaming emits OpenAI-compatible `data:` chunks, a final `arbiter_metrics` event with `ttft_ms` and `total_ms`, and `data: [DONE]`. It returns `unpriced` cost headers until the human-reviewed pricing table and ledger metering are implemented; these values are intentionally not treated as zero.
 
 The cost calculator accepts versioned pricing rates at runtime, accounts for cached prompt tokens separately, and rejects unknown models. Its test fixture uses synthetic rates only; no synthetic rates are committed as production pricing.
+
+The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
 
 The smoke check is deterministic and does not call a paid provider, AWS, or a local model.
 
