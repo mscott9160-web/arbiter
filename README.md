@@ -45,6 +45,8 @@ The cost calculator accepts versioned pricing rates at runtime, accounts for cac
 
 The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
 
+The Postgres Compose service applies `ledger/migrations/V1__create_request_events.sql` on first initialization. The migration creates a UUID primary key on `request_id` and stores the complete event as JSONB.
+
 The smoke check is deterministic and does not call a paid provider, AWS, or a local model.
 
 ## Locked architecture
