@@ -3,6 +3,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from contract_check import validate_chat_completion, validate_ledger_event
 
 
 def main() -> int:
@@ -22,7 +25,24 @@ def main() -> int:
         print(f"SMOKE_FAIL ledger required fields differ: {sorted(required)}")
         return 1
 
-    print("SMOKE_OK contracts present and ledger required fields match")
+    validate_chat_completion({
+        "model": "auto",
+        "messages": [{"role": "user", "content": "Smoke test"}],
+    })
+    validate_ledger_event({
+        "request_id": "00000000-0000-4000-8000-000000000001",
+        "ts": "2026-09-11T12:00:00Z",
+        "tenant_id": "demo",
+        "route": {},
+        "cache": {},
+        "tokens": {},
+        "timing": {},
+        "gpu": None,
+        "cost": {},
+        "quality": {},
+    })
+
+    print("SMOKE_OK contracts present and sample request/event validate")
     return 0
 
 

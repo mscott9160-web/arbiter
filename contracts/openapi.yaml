@@ -31,12 +31,15 @@ components:
           description: auto or a pinned tier such as tier:premium.
         messages:
           type: array
+          minItems: 1
           items:
             type: object
+            additionalProperties: false
             required: [role, content]
             properties:
               role:
                 type: string
+                enum: [system, user, assistant, tool]
               content:
                 type: string
         stream:
@@ -44,6 +47,7 @@ components:
           default: false
         x_arbiter:
           type: object
+          additionalProperties: false
           properties:
             max_cost_usd:
               type: number

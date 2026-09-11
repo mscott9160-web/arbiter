@@ -8,6 +8,8 @@ The repository currently contains the first contract slice:
 
 - OpenAI-compatible request contract in `contracts/openapi.yaml`
 - Ledger event contract in `schemas/ledger-event.schema.json`
+- Executable contract checks in `scripts/contract_check.py`
+- Java 21 Spring Boot gateway skeleton in `gateway/`
 - Offline smoke check in `scripts/smoke.py`
 - Pricing values intentionally omitted until human-reviewed source evidence is supplied
 
@@ -24,6 +26,14 @@ With Make available:
 ```text
 make smoke
 ```
+
+The gateway test requires Java 21 and Maven:
+
+```powershell
+mvn -f gateway/pom.xml test -B
+```
+
+It starts the WebFlux application on a random port and verifies `GET /health`.
 
 The smoke check is deterministic and does not call a paid provider, AWS, or a local model.
 

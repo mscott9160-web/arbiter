@@ -1,7 +1,10 @@
-.PHONY: smoke dev
+.PHONY: smoke gateway-test dev down
 
 smoke:
 	python scripts/smoke.py
+
+gateway-test:
+	$${MAVEN_CMD:-mvn} -f gateway/pom.xml test -B
 
 dev:
 	docker compose up -d
