@@ -46,6 +46,8 @@ The cost calculator accepts versioned pricing rates at runtime, accounts for cac
 
 The classifier sidecar is in `classifier-svc/`. Run its tests with `python -m pytest -q classifier-svc/tests`; the current heuristic baseline exposes `/classify` and routes uncertainty-band scores upward. ONNX model training and capability-gap labels are intentionally still pending.
 
+The gateway calls the classifier at `ARBITER_CLASSIFIER_URL` (default `http://localhost:8001`). Classification metadata is copied into response headers. If the sidecar is unavailable, the gateway returns `503` rather than inventing a complexity score.
+
 The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
 
 The Postgres Compose service applies `ledger/migrations/V1__create_request_events.sql` on first initialization. The migration creates a UUID primary key on `request_id` and stores the complete event as JSONB.

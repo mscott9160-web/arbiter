@@ -18,9 +18,11 @@ import reactor.core.publisher.Flux;
 @RestController
 public class ChatCompletionController {
     private final CompletionProvider provider;
+    private final ClassifierClient classifierClient;
 
-    public ChatCompletionController(CompletionProvider provider) {
+    public ChatCompletionController(CompletionProvider provider, ClassifierClient classifierClient) {
         this.provider = provider;
+        this.classifierClient = classifierClient;
     }
 
     @PostMapping("/v1/chat/completions")
@@ -31,8 +33,9 @@ public class ChatCompletionController {
         var requestId = suppliedRequestId == null || suppliedRequestId.isBlank()
                 ? UUID.randomUUID().toString()
                 : suppliedRequestId;
+        var classification = classifierClient.classify(lastUserPrompt(request));
         if (request.stream()) {
-            return streamResponse(request, requestId);
+            return streamResponse(request, requestId, classification);
         }
 
         var completion = provider.complete(request);
@@ -43,10 +46,11 @@ public class ChatCompletionController {
                 List.of(new Choice(0, new Message("assistant", completion.content()), "stop")),
                 new Usage(completion.promptTokens(), completion.completionTokens(),
                         completion.promptTokens() + completion.completionTokens()));
-        return new ResponseEntity<>(response, arbiterHeaders(requestId, completion.model()), HttpStatus.OK);
+        return new ResponseEntity<>(response, arbiterHeaders(requestId, completion.model(), classification), HttpStatus.OK);
     }
 
-    private ResponseEntity<Flux<String>> streamResponse(ChatCompletionRequest request, String requestId) {
+    private ResponseEntity<Flux<String>> streamResponse(
+            ChatCompletionRequest request, String requestId, ClassificationResult classification) {
         var startedAt = System.nanoTime();
         var firstTokenAt = new long[] {0L};
         var model = "fake-small";
@@ -73,20 +77,22 @@ public class ChatCompletionController {
                             "data: [DONE]\n\n");
                 }));
 
-        var headers = arbiterHeaders(requestId, model);
+        var headers = arbiterHeaders(requestId, model, classification);
         headers.setContentType(MediaType.TEXT_EVENT_STREAM);
         headers.set("x-arbiter-stream-metrics", "final-event");
         return new ResponseEntity<>(chunks, headers, HttpStatus.OK);
     }
 
-    private HttpHeaders arbiterHeaders(String requestId, String model) {
+    private HttpHeaders arbiterHeaders(String requestId, String model, ClassificationResult classification) {
         var headers = new HttpHeaders();
         headers.set("x-arbiter-request-id", requestId);
         headers.set("x-arbiter-model", model);
         headers.set("x-arbiter-tier", "small");
         headers.set("x-arbiter-cache", "miss");
-        headers.set("x-arbiter-complexity", "unclassified");
-        headers.set("x-arbiter-escalated", "false");
+        headers.set("x-arbiter-complexity", Double.toString(classification.complexity()));
+        headers.set("x-arbiter-task-class", classification.taskClass());
+        headers.set("x-arbiter-classifier-version", classification.classifierVersion());
+        headers.set("x-arbiter-escalated", Boolean.toString(classification.routeUp()));
         headers.set("x-arbiter-cost-usd", "unpriced");
         headers.set("x-arbiter-baseline-cost-usd", "unpriced");
         return headers;
@@ -94,6 +100,14 @@ public class ChatCompletionController {
 
     private String escapeJson(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+    }
+
+    private String lastUserPrompt(ChatCompletionRequest request) {
+        return request.messages().stream()
+                .filter(message -> "user".equals(message.role()))
+                .reduce((first, second) -> second)
+                .map(ChatCompletionRequest.Message::content)
+                .orElse(request.messages().get(request.messages().size() - 1).content());
     }
 
     private void validate(ChatCompletionRequest request) {
