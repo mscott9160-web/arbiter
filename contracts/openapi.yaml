@@ -15,7 +15,11 @@ paths:
               $ref: '#/components/schemas/ChatCompletionRequest'
       responses:
         '200':
-          description: Completion response.
+          description: Non-streaming completion response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
         '402':
           description: Request exceeds its hard cost budget.
         '422':
@@ -61,3 +65,47 @@ components:
             tenant_id:
               type: string
               minLength: 1
+    ChatCompletionResponse:
+      type: object
+      required: [object, id, model, choices, usage]
+      properties:
+        object:
+          type: string
+          example: chat.completion
+        id:
+          type: string
+        model:
+          type: string
+        choices:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [index, message, finish_reason]
+            properties:
+              index:
+                type: integer
+              message:
+                type: object
+                required: [role, content]
+                properties:
+                  role:
+                    type: string
+                    enum: [assistant]
+                  content:
+                    type: string
+              finish_reason:
+                type: string
+        usage:
+          type: object
+          required: [prompt_tokens, completion_tokens, total_tokens]
+          properties:
+            prompt_tokens:
+              type: integer
+              minimum: 0
+            completion_tokens:
+              type: integer
+              minimum: 0
+            total_tokens:
+              type: integer
+              minimum: 0
