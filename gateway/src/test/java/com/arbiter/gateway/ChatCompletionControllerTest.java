@@ -39,7 +39,7 @@ class ChatCompletionControllerTest {
     }
 
     @Test
-    void rejectsStreamingUntilSseMeteringIsImplemented() {
+    void streamsTokensAndReportsTimingMetrics() {
         var request = new HttpEntity<>("""
                 {"model":"auto","stream":true,"messages":[{"role":"user","content":"hello"}]}
                 """, jsonHeaders());
@@ -50,7 +50,11 @@ class ChatCompletionControllerTest {
                 request,
                 String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getFirst("Content-Type")).startsWith("text/event-stream");
+        assertThat(response.getBody()).contains("chat.completion.chunk");
+        assertThat(response.getBody()).contains("arbiter_metrics");
+        assertThat(response.getBody()).contains("[DONE]");
     }
 
     private HttpHeaders jsonHeaders() {

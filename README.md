@@ -11,6 +11,7 @@ The repository currently contains the first contract slice:
 - Executable contract checks in `scripts/contract_check.py`
 - Java 21 Spring Boot gateway skeleton in `gateway/`
 - Deterministic fake provider for non-streaming `/v1/chat/completions`
+- SSE token streaming with TTFT and total-latency metrics
 - Offline smoke check in `scripts/smoke.py`
 - Pricing values intentionally omitted until human-reviewed source evidence is supplied
 
@@ -36,7 +37,7 @@ mvn -f gateway/pom.xml test -B
 
 It starts the WebFlux application on a random port and verifies `GET /health`.
 
-The current gateway slice also verifies a local request through the fake provider. It returns `unpriced` cost headers until the human-reviewed pricing table and ledger metering are implemented; these values are intentionally not treated as zero.
+The current gateway slice verifies local requests through the fake provider. Streaming emits OpenAI-compatible `data:` chunks, a final `arbiter_metrics` event with `ttft_ms` and `total_ms`, and `data: [DONE]`. It returns `unpriced` cost headers until the human-reviewed pricing table and ledger metering are implemented; these values are intentionally not treated as zero.
 
 The smoke check is deterministic and does not call a paid provider, AWS, or a local model.
 
