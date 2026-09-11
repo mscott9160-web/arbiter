@@ -1,0 +1,44 @@
+{
+  "embedding_version": "demo-hash-64-2026.09.11",
+  "dataset": "held-out-near-miss-v1",
+  "methodology": "All pairs are labeled non-equivalent; false hit means cosine score meets threshold.",
+  "results": [
+    {
+      "threshold": 0.9,
+      "cases": 5,
+      "false_hits": 1,
+      "precision": 0.8,
+      "recall": null
+    },
+    {
+      "threshold": 0.93,
+      "cases": 5,
+      "false_hits": 0,
+      "precision": 1.0,
+      "recall": null
+    },
+    {
+      "threshold": 0.95,
+      "cases": 5,
+      "false_hits": 0,
+      "precision": 1.0,
+      "recall": null
+    },
+    {
+      "threshold": 0.97,
+      "cases": 5,
+      "false_hits": 0,
+      "precision": 1.0,
+      "recall": null
+    },
+    {
+      "threshold": 0.99,
+      "cases": 5,
+      "false_hits": 0,
+      "precision": 1.0,
+      "recall": null
+    }
+  ],
+  "shipped_threshold": 0.95,
+  "production_status": "demo embedding only; not a quality claim"
+}

@@ -13,3 +13,4 @@
 - 2026-09-11: Added the profile-gated Redis exact-cache adapter with TTL and tenant invalidation index.
 - 2026-09-11: Added semantic-cache deny-list policy for temperature, time sensitivity, tool calls, math, and code execution.
 - 2026-09-11: Added an opt-in semantic cache adapter with cosine thresholding and a deterministic demo embedding boundary.
+- 2026-09-11: Added pgvector semantic-cache DDL and a reproducible near-miss cache-poisoning evaluation artifact.

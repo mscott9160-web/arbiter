@@ -5,5 +5,4 @@ __pycache__/
 .env.*
 !.env.example
 *.log
-bench/*.json
 **/target/

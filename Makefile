@@ -1,4 +1,4 @@
-.PHONY: smoke gateway-test classifier-test dev down
+.PHONY: smoke gateway-test classifier-test cache-eval dev down
 
 smoke:
 	python scripts/smoke.py
@@ -8,6 +8,9 @@ gateway-test:
 
 classifier-test:
 	python -m pytest -q classifier-svc/tests
+
+cache-eval:
+	python eval/cache_poisoning.py
 
 dev:
 	docker compose up -d

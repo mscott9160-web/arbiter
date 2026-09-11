@@ -18,6 +18,7 @@ The repository currently contains the first contract slice:
 - Exact SHA-256 cache semantics with tenant namespaces and cache directives
 - Semantic-cache deny-list with auditable reasons
 - Opt-in cosine semantic-cache adapter with deterministic demo embeddings
+- Cache-poisoning threshold evaluation generated at `bench/cache_precision.json`
 - Offline smoke check in `scripts/smoke.py`
 - Pricing values intentionally omitted until human-reviewed source evidence is supplied
 
@@ -56,6 +57,8 @@ The exact cache uses an in-memory adapter by default for deterministic offline t
 Semantic-cache eligibility is evaluated before any future vector lookup. The gateway denies temperature above `0.3`, current/date-sensitive prompts, tool calls, `code_execution`, and `math`, and exposes the reason in `x-arbiter-semantic-cache`. Exact caching remains independent of this safety gate.
 
 The semantic adapter is enabled with `SPRING_PROFILES_ACTIVE=semantic` and uses the classifier sidecar's demo `/embed` endpoint. It is a reference path only; pgvector, measured embeddings, and cache-poisoning evaluation are required before production use.
+
+The cache-poisoning harness runs with `make cache-eval` and regenerates the checked-in benchmark artifact. The shipped demo threshold has zero false hits on the held-out near-miss set; this result applies only to the demo embedding version named in the artifact.
 
 The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
 
