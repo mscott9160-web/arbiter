@@ -10,3 +10,4 @@
 - 2026-09-11: Added the FastAPI classifier sidecar with versioned heuristic classification and uncertainty-band escalation.
 - 2026-09-11: Connected the gateway to the classifier sidecar with fail-closed availability handling and auditable route headers.
 - 2026-09-11: Added tenant-scoped exact SHA-256 caching with allow, bypass, and refresh directives.
+- 2026-09-11: Added the profile-gated Redis exact-cache adapter with TTL and tenant invalidation index.

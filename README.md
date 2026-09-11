@@ -49,7 +49,7 @@ The classifier sidecar is in `classifier-svc/`. Run its tests with `python -m py
 
 The gateway calls the classifier at `ARBITER_CLASSIFIER_URL` (default `http://localhost:8001`). Classification metadata is copied into response headers. If the sidecar is unavailable, the gateway returns `503` rather than inventing a complexity score.
 
-The exact cache currently uses an in-memory adapter to prove normalization, tenant isolation, hit/miss behavior, bypass, and refresh semantics. Redis is present in Compose and is the next adapter for durable shared cache state.
+The exact cache uses an in-memory adapter by default for deterministic offline tests. To activate the shared Redis adapter, set `SPRING_PROFILES_ACTIVE=redis`; Spring Boot then uses `ARBITER_REDIS_URL` and `ARBITER_CACHE_TTL_SECONDS` (default `3600`). Redis stores a tenant index so explicit tenant invalidation removes the associated entries.
 
 The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
 
