@@ -7,3 +7,4 @@
 - 2026-09-11: Added typed token cost calculation with cached-input accounting and fail-closed unknown-model handling.
 - 2026-09-11: Added asynchronous batched ledger writing with transient retry and store-owned request idempotency.
 - 2026-09-11: Added the PostgreSQL request-events migration and JDBC idempotent batch store.
+- 2026-09-11: Added the FastAPI classifier sidecar with versioned heuristic classification and uncertainty-band escalation.
