@@ -19,10 +19,13 @@ import reactor.core.publisher.Flux;
 public class ChatCompletionController {
     private final CompletionProvider provider;
     private final ClassifierClient classifierClient;
+    private final ExactCache exactCache;
 
-    public ChatCompletionController(CompletionProvider provider, ClassifierClient classifierClient) {
+    public ChatCompletionController(
+            CompletionProvider provider, ClassifierClient classifierClient, ExactCache exactCache) {
         this.provider = provider;
         this.classifierClient = classifierClient;
+        this.exactCache = exactCache;
     }
 
     @PostMapping("/v1/chat/completions")
@@ -34,6 +37,16 @@ public class ChatCompletionController {
                 ? UUID.randomUUID().toString()
                 : suppliedRequestId;
         var classification = classifierClient.classify(lastUserPrompt(request));
+        var tenantId = tenantId(request);
+        var cacheMode = cacheMode(request);
+        var cacheable = !request.stream() && !"bypass".equals(cacheMode);
+        if (cacheable && !"refresh".equals(cacheMode)) {
+            var cached = exactCache.get(tenantId, request);
+            if (cached != null) {
+                return new ResponseEntity<>(cached,
+                        arbiterHeaders(requestId, cached.model(), classification, "hit-exact"), HttpStatus.OK);
+            }
+        }
         if (request.stream()) {
             return streamResponse(request, requestId, classification);
         }
@@ -46,7 +59,12 @@ public class ChatCompletionController {
                 List.of(new Choice(0, new Message("assistant", completion.content()), "stop")),
                 new Usage(completion.promptTokens(), completion.completionTokens(),
                         completion.promptTokens() + completion.completionTokens()));
-        return new ResponseEntity<>(response, arbiterHeaders(requestId, completion.model(), classification), HttpStatus.OK);
+        if (cacheable) {
+            exactCache.put(tenantId, request, response);
+        }
+        var cacheResult = cacheable ? "miss" : "bypass";
+        return new ResponseEntity<>(response,
+            arbiterHeaders(requestId, completion.model(), classification, cacheResult), HttpStatus.OK);
     }
 
     private ResponseEntity<Flux<String>> streamResponse(
@@ -77,18 +95,19 @@ public class ChatCompletionController {
                             "data: [DONE]\n\n");
                 }));
 
-        var headers = arbiterHeaders(requestId, model, classification);
+        var headers = arbiterHeaders(requestId, model, classification, "bypass");
         headers.setContentType(MediaType.TEXT_EVENT_STREAM);
         headers.set("x-arbiter-stream-metrics", "final-event");
         return new ResponseEntity<>(chunks, headers, HttpStatus.OK);
     }
 
-    private HttpHeaders arbiterHeaders(String requestId, String model, ClassificationResult classification) {
+        private HttpHeaders arbiterHeaders(
+            String requestId, String model, ClassificationResult classification, String cacheResult) {
         var headers = new HttpHeaders();
         headers.set("x-arbiter-request-id", requestId);
         headers.set("x-arbiter-model", model);
         headers.set("x-arbiter-tier", "small");
-        headers.set("x-arbiter-cache", "miss");
+        headers.set("x-arbiter-cache", cacheResult);
         headers.set("x-arbiter-complexity", Double.toString(classification.complexity()));
         headers.set("x-arbiter-task-class", classification.taskClass());
         headers.set("x-arbiter-classifier-version", classification.classifierVersion());
@@ -110,6 +129,16 @@ public class ChatCompletionController {
                 .orElse(request.messages().get(request.messages().size() - 1).content());
     }
 
+    private String tenantId(ChatCompletionRequest request) {
+        var tenantId = request.arbiter().tenantId();
+        return tenantId == null || tenantId.isBlank() ? "default" : tenantId;
+    }
+
+    private String cacheMode(ChatCompletionRequest request) {
+        var cacheMode = request.arbiter().cache();
+        return cacheMode == null || cacheMode.isBlank() ? "allow" : cacheMode;
+    }
+
     private void validate(ChatCompletionRequest request) {
         if (request.model() == null || request.model().isBlank()
                 || request.messages() == null || request.messages().isEmpty()) {
@@ -120,6 +149,10 @@ public class ChatCompletionController {
                     || !List.of("system", "user", "assistant", "tool").contains(message.role())) {
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid message");
             }
+        }
+        var cacheMode = request.arbiter().cache();
+        if (cacheMode != null && !List.of("allow", "bypass", "refresh").contains(cacheMode)) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid cache mode");
         }
     }
 

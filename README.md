@@ -15,6 +15,7 @@ The repository currently contains the first contract slice:
 - Typed token cost calculator with fail-closed unknown-model behavior
 - Asynchronous batched ledger writer with retry and store-owned idempotency
 - Python FastAPI classifier sidecar with a versioned heuristic cascade
+- Exact SHA-256 cache semantics with tenant namespaces and cache directives
 - Offline smoke check in `scripts/smoke.py`
 - Pricing values intentionally omitted until human-reviewed source evidence is supplied
 
@@ -47,6 +48,8 @@ The cost calculator accepts versioned pricing rates at runtime, accounts for cac
 The classifier sidecar is in `classifier-svc/`. Run its tests with `python -m pytest -q classifier-svc/tests`; the current heuristic baseline exposes `/classify` and routes uncertainty-band scores upward. ONNX model training and capability-gap labels are intentionally still pending.
 
 The gateway calls the classifier at `ARBITER_CLASSIFIER_URL` (default `http://localhost:8001`). Classification metadata is copied into response headers. If the sidecar is unavailable, the gateway returns `503` rather than inventing a complexity score.
+
+The exact cache currently uses an in-memory adapter to prove normalization, tenant isolation, hit/miss behavior, bypass, and refresh semantics. Redis is present in Compose and is the next adapter for durable shared cache state.
 
 The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
 

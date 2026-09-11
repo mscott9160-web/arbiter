@@ -27,8 +27,12 @@ class ChatCompletionControllerTest {
     @MockBean
     private ClassifierClient classifierClient;
 
+    @Autowired
+    private ExactCache exactCache;
+
     @org.junit.jupiter.api.BeforeEach
     void configureClassifier() {
+        exactCache.invalidateTenant("default");
         when(classifierClient.classify(anyString()))
                 .thenReturn(new ClassificationResult(0.31, "general", "heuristic-test", false, false));
     }
@@ -52,6 +56,22 @@ class ChatCompletionControllerTest {
         assertThat(response.getHeaders().getFirst("x-arbiter-complexity")).isEqualTo("0.31");
         assertThat(response.getHeaders().getFirst("x-arbiter-task-class")).isEqualTo("general");
     }
+
+        @Test
+        void servesAnExactRepeatFromCache() {
+        var request = new HttpEntity<>("""
+            {"model":"auto","messages":[{"role":"user","content":"cached hello"}]}
+            """, jsonHeaders());
+
+        var first = restTemplate.exchange("http://localhost:" + port + "/v1/chat/completions",
+            HttpMethod.POST, request, String.class);
+        var second = restTemplate.exchange("http://localhost:" + port + "/v1/chat/completions",
+            HttpMethod.POST, request, String.class);
+
+        assertThat(first.getHeaders().getFirst("x-arbiter-cache")).isEqualTo("miss");
+        assertThat(second.getHeaders().getFirst("x-arbiter-cache")).isEqualTo("hit-exact");
+        assertThat(second.getBody()).isEqualTo(first.getBody());
+        }
 
     @Test
     void streamsTokensAndReportsTimingMetrics() {
