@@ -1,0 +1,59 @@
+openapi: 3.1.0
+info:
+  title: Arbiter Inference Routing Gateway
+  version: 0.1.0
+  description: OpenAI-compatible contract for routed inference and cost attribution.
+paths:
+  /v1/chat/completions:
+    post:
+      operationId: createChatCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Completion response.
+        '402':
+          description: Request exceeds its hard cost budget.
+        '422':
+          description: Invalid request.
+components:
+  schemas:
+    ChatCompletionRequest:
+      type: object
+      required: [model, messages]
+      properties:
+        model:
+          type: string
+          description: auto or a pinned tier such as tier:premium.
+        messages:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role:
+                type: string
+              content:
+                type: string
+        stream:
+          type: boolean
+          default: false
+        x_arbiter:
+          type: object
+          properties:
+            max_cost_usd:
+              type: number
+              minimum: 0
+            min_quality_tier:
+              type: string
+              enum: [standard, high, critical]
+            cache:
+              type: string
+              enum: [allow, bypass, refresh]
+            tenant_id:
+              type: string
+              minLength: 1

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbiter.local/schemas/ledger-event.schema.json",
+  "title": "Arbiter request ledger event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "ts",
+    "tenant_id",
+    "route",
+    "cache",
+    "tokens",
+    "timing",
+    "gpu",
+    "cost",
+    "quality"
+  ],
+  "properties": {
+    "request_id": { "type": "string", "format": "uuid" },
+    "ts": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "route": { "type": "object" },
+    "cache": { "type": "object" },
+    "tokens": { "type": "object" },
+    "timing": { "type": "object" },
+    "gpu": { "type": ["object", "null"] },
+    "cost": { "type": "object" },
+    "quality": { "type": "object" }
+  }
+}
