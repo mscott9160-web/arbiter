@@ -8,7 +8,9 @@ public record ChatCompletionRequest(
         String model,
         List<Message> messages,
         boolean stream,
-        @JsonProperty("x_arbiter") ArbiterOptions arbiter) {
+    @JsonProperty("x_arbiter") ArbiterOptions arbiter,
+    Double temperature,
+    @JsonProperty("tool_calls") List<ToolCall> toolCalls) {
     public ChatCompletionRequest {
         if (arbiter == null) {
             arbiter = new ArbiterOptions(null, null, null, null);
@@ -16,6 +18,9 @@ public record ChatCompletionRequest(
     }
 
     public record Message(String role, String content) {
+    }
+
+    public record ToolCall(String id) {
     }
 
     public record ArbiterOptions(

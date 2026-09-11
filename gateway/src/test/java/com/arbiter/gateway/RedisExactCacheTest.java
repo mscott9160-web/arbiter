@@ -28,6 +28,6 @@ class RedisExactCacheTest {
     private ChatCompletionRequest request() {
         return new ChatCompletionRequest(
                 "auto", List.of(new ChatCompletionRequest.Message("user", "hello")), false,
-                new ChatCompletionRequest.ArbiterOptions(null, "standard", "allow", "acme"));
+                new ChatCompletionRequest.ArbiterOptions(null, "standard", "allow", "acme"), null, List.of());
     }
 }

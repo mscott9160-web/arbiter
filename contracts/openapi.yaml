@@ -49,6 +49,18 @@ components:
         stream:
           type: boolean
           default: false
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+        tool_calls:
+          type: array
+          items:
+            type: object
+            required: [id]
+            properties:
+              id:
+                type: string
         x_arbiter:
           type: object
           additionalProperties: false

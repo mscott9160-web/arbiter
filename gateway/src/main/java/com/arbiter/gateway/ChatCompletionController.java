@@ -20,12 +20,15 @@ public class ChatCompletionController {
     private final CompletionProvider provider;
     private final ClassifierClient classifierClient;
     private final ExactCache exactCache;
+    private final SemanticCachePolicy semanticCachePolicy;
 
     public ChatCompletionController(
-            CompletionProvider provider, ClassifierClient classifierClient, ExactCache exactCache) {
+            CompletionProvider provider, ClassifierClient classifierClient, ExactCache exactCache,
+            SemanticCachePolicy semanticCachePolicy) {
         this.provider = provider;
         this.classifierClient = classifierClient;
         this.exactCache = exactCache;
+        this.semanticCachePolicy = semanticCachePolicy;
     }
 
     @PostMapping("/v1/chat/completions")
@@ -37,6 +40,7 @@ public class ChatCompletionController {
                 ? UUID.randomUUID().toString()
                 : suppliedRequestId;
         var classification = classifierClient.classify(lastUserPrompt(request));
+        var semanticDecision = semanticCachePolicy.evaluate(request, classification);
         var tenantId = tenantId(request);
         var cacheMode = cacheMode(request);
         var cacheable = !request.stream() && !"bypass".equals(cacheMode);
@@ -44,11 +48,11 @@ public class ChatCompletionController {
             var cached = exactCache.get(tenantId, request);
             if (cached != null) {
                 return new ResponseEntity<>(cached,
-                        arbiterHeaders(requestId, cached.model(), classification, "hit-exact"), HttpStatus.OK);
+                    arbiterHeaders(requestId, cached.model(), classification, "hit-exact", semanticDecision), HttpStatus.OK);
             }
         }
         if (request.stream()) {
-            return streamResponse(request, requestId, classification);
+            return streamResponse(request, requestId, classification, semanticDecision);
         }
 
         var completion = provider.complete(request);
@@ -64,11 +68,12 @@ public class ChatCompletionController {
         }
         var cacheResult = cacheable ? "miss" : "bypass";
         return new ResponseEntity<>(response,
-            arbiterHeaders(requestId, completion.model(), classification, cacheResult), HttpStatus.OK);
+            arbiterHeaders(requestId, completion.model(), classification, cacheResult, semanticDecision), HttpStatus.OK);
     }
 
     private ResponseEntity<Flux<String>> streamResponse(
-            ChatCompletionRequest request, String requestId, ClassificationResult classification) {
+            ChatCompletionRequest request, String requestId, ClassificationResult classification,
+            SemanticCachePolicy.Decision semanticDecision) {
         var startedAt = System.nanoTime();
         var firstTokenAt = new long[] {0L};
         var model = "fake-small";
@@ -95,19 +100,22 @@ public class ChatCompletionController {
                             "data: [DONE]\n\n");
                 }));
 
-        var headers = arbiterHeaders(requestId, model, classification, "bypass");
+        var headers = arbiterHeaders(requestId, model, classification, "bypass", semanticDecision);
         headers.setContentType(MediaType.TEXT_EVENT_STREAM);
         headers.set("x-arbiter-stream-metrics", "final-event");
         return new ResponseEntity<>(chunks, headers, HttpStatus.OK);
     }
 
         private HttpHeaders arbiterHeaders(
-            String requestId, String model, ClassificationResult classification, String cacheResult) {
+                String requestId, String model, ClassificationResult classification, String cacheResult,
+                SemanticCachePolicy.Decision semanticDecision) {
         var headers = new HttpHeaders();
         headers.set("x-arbiter-request-id", requestId);
         headers.set("x-arbiter-model", model);
         headers.set("x-arbiter-tier", "small");
         headers.set("x-arbiter-cache", cacheResult);
+        headers.set("x-arbiter-semantic-cache",
+            semanticDecision.eligible() ? "eligible" : "denied:" + semanticDecision.reason());
         headers.set("x-arbiter-complexity", Double.toString(classification.complexity()));
         headers.set("x-arbiter-task-class", classification.taskClass());
         headers.set("x-arbiter-classifier-version", classification.classifierVersion());

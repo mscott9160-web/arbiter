@@ -12,7 +12,7 @@ class InMemoryExactCacheTest {
             "auto",
             List.of(new ChatCompletionRequest.Message("user", " hello\r\n")),
             false,
-            new ChatCompletionRequest.ArbiterOptions(null, "standard", "allow", "acme"));
+            new ChatCompletionRequest.ArbiterOptions(null, "standard", "allow", "acme"), null, List.of());
     private final ChatCompletionController.ChatCompletionResponse response =
             new ChatCompletionController.ChatCompletionResponse("chat.completion", "id", "fake-small", List.of(), null);
 
@@ -20,7 +20,8 @@ class InMemoryExactCacheTest {
     void normalizesLineEndingsAndOuterWhitespace() {
         cache.put("acme", request, response);
         var equivalent = new ChatCompletionRequest(
-                "auto", List.of(new ChatCompletionRequest.Message("user", "hello")), false, request.arbiter());
+                "auto", List.of(new ChatCompletionRequest.Message("user", "hello")), false, request.arbiter(),
+                null, List.of());
 
         assertThat(cache.get("acme", equivalent)).isEqualTo(response);
     }

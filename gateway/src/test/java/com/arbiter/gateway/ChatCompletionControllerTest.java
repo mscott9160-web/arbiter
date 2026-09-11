@@ -55,6 +55,7 @@ class ChatCompletionControllerTest {
         assertThat(response.getHeaders().getFirst("x-arbiter-cost-usd")).isEqualTo("unpriced");
         assertThat(response.getHeaders().getFirst("x-arbiter-complexity")).isEqualTo("0.31");
         assertThat(response.getHeaders().getFirst("x-arbiter-task-class")).isEqualTo("general");
+        assertThat(response.getHeaders().getFirst("x-arbiter-semantic-cache")).isEqualTo("eligible");
     }
 
         @Test
