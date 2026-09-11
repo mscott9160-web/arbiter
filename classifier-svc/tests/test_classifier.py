@@ -41,3 +41,12 @@ def test_empty_prompt_is_rejected():
     response = client.post("/classify", json={"prompt": ""})
 
     assert response.status_code == 422
+
+
+def test_demo_embedding_is_normalized_and_versioned():
+    response = client.post("/embed", json={"text": "same text"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["embedding"]) == 64
+    assert body["embedding_version"] == "demo-hash-64-2026.09.11"

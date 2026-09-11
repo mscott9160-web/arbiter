@@ -17,6 +17,7 @@ The repository currently contains the first contract slice:
 - Python FastAPI classifier sidecar with a versioned heuristic cascade
 - Exact SHA-256 cache semantics with tenant namespaces and cache directives
 - Semantic-cache deny-list with auditable reasons
+- Opt-in cosine semantic-cache adapter with deterministic demo embeddings
 - Offline smoke check in `scripts/smoke.py`
 - Pricing values intentionally omitted until human-reviewed source evidence is supplied
 
@@ -53,6 +54,8 @@ The gateway calls the classifier at `ARBITER_CLASSIFIER_URL` (default `http://lo
 The exact cache uses an in-memory adapter by default for deterministic offline tests. To activate the shared Redis adapter, set `SPRING_PROFILES_ACTIVE=redis`; Spring Boot then uses `ARBITER_REDIS_URL` and `ARBITER_CACHE_TTL_SECONDS` (default `3600`). Redis stores a tenant index so explicit tenant invalidation removes the associated entries.
 
 Semantic-cache eligibility is evaluated before any future vector lookup. The gateway denies temperature above `0.3`, current/date-sensitive prompts, tool calls, `code_execution`, and `math`, and exposes the reason in `x-arbiter-semantic-cache`. Exact caching remains independent of this safety gate.
+
+The semantic adapter is enabled with `SPRING_PROFILES_ACTIVE=semantic` and uses the classifier sidecar's demo `/embed` endpoint. It is a reference path only; pgvector, measured embeddings, and cache-poisoning evaluation are required before production use.
 
 The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
 

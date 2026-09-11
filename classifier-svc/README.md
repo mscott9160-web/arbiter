@@ -15,3 +15,6 @@ Endpoints:
 
 - `GET /health`
 - `POST /classify` with `{ "prompt": "..." }`
+- `POST /embed` with `{ "text": "..." }` for the deterministic demo embedding only
+
+The demo embedding endpoint is not a quality claim. Replace it with a measured local embedding model before enabling semantic caching for real traffic.
