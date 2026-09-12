@@ -1,7 +1,9 @@
 package com.arbiter.gateway;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record ClassificationResult(
         double complexity,
     @JsonProperty("task_class") String taskClass,

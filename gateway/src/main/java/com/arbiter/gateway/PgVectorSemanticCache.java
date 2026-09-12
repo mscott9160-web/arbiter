@@ -11,11 +11,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile("pgvector")
 public final class PgVectorSemanticCache implements SemanticCache {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PgVectorSemanticCache.class);
     private static final String FIND_SQL = """
             SELECT response
             FROM semantic_cache_entries
@@ -27,7 +30,7 @@ public final class PgVectorSemanticCache implements SemanticCache {
     private static final String PUT_SQL = """
             INSERT INTO semantic_cache_entries
                 (tenant_id, task_class, prompt, prompt_hash, embedding, response, expires_at)
-            VALUES (?, ?, ?, ?, CAST(? AS vector), CAST(? AS jsonb), now() + (? || ' seconds')::interval)
+            VALUES (?, ?, ?, ?, CAST(? AS vector), CAST(? AS jsonb), now() + ((?::text || ' seconds')::interval))
             ON CONFLICT (tenant_id, prompt_hash) DO UPDATE
                 SET response = EXCLUDED.response, embedding = EXCLUDED.embedding,
                     expires_at = EXCLUDED.expires_at
@@ -57,12 +60,17 @@ public final class PgVectorSemanticCache implements SemanticCache {
 
     @Override
     public ChatCompletionController.ChatCompletionResponse find(String tenantId, String taskClass, String prompt) {
-        var vector = vectorLiteral(embeddingClient.embed(prompt));
-        var responses = jdbcTemplate.query(
-                FIND_SQL,
-                (resultSet, rowNum) -> readResponse(resultSet.getString("response")),
-                tenantId, taskClass, vector, distanceThreshold, vector);
-        return responses.isEmpty() ? null : responses.get(0);
+        try {
+            var vector = vectorLiteral(embeddingClient.embed(prompt));
+            var responses = jdbcTemplate.query(
+                    FIND_SQL,
+                    (resultSet, rowNum) -> readResponse(resultSet.getString("response")),
+                    tenantId, taskClass, vector, distanceThreshold, vector);
+            return responses.isEmpty() ? null : responses.get(0);
+        } catch (RuntimeException error) {
+            LOGGER.error("semantic cache lookup failed for tenant {}", tenantId, error);
+            throw error;
+        }
     }
 
     @Override
@@ -73,6 +81,9 @@ public final class PgVectorSemanticCache implements SemanticCache {
                     vectorLiteral(embeddingClient.embed(prompt)), objectMapper.writeValueAsString(response), ttlSeconds);
         } catch (JsonProcessingException error) {
             throw new IllegalArgumentException("completion is not JSON serializable", error);
+        } catch (RuntimeException error) {
+            LOGGER.error("semantic cache write failed for tenant {}", tenantId, error);
+            throw error;
         }
     }
 

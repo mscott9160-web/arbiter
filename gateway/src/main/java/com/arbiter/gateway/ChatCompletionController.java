@@ -1,6 +1,7 @@
 package com.arbiter.gateway;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
@@ -12,23 +13,28 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import reactor.core.publisher.Flux;
 
 @RestController
 public class ChatCompletionController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ChatCompletionController.class);
     private final CompletionProvider provider;
     private final ClassifierClient classifierClient;
     private final ExactCache exactCache;
     private final SemanticCachePolicy semanticCachePolicy;
+    private final Optional<SemanticCache> semanticCache;
 
     public ChatCompletionController(
             CompletionProvider provider, ClassifierClient classifierClient, ExactCache exactCache,
-            SemanticCachePolicy semanticCachePolicy) {
+            SemanticCachePolicy semanticCachePolicy, Optional<SemanticCache> semanticCache) {
         this.provider = provider;
         this.classifierClient = classifierClient;
         this.exactCache = exactCache;
         this.semanticCachePolicy = semanticCachePolicy;
+        this.semanticCache = semanticCache;
     }
 
     @PostMapping("/v1/chat/completions")
@@ -50,6 +56,14 @@ public class ChatCompletionController {
                 return new ResponseEntity<>(cached,
                     arbiterHeaders(requestId, cached.model(), classification, "hit-exact", semanticDecision), HttpStatus.OK);
             }
+                if (semanticDecision.eligible()) {
+                    var semanticCached = semanticFind(tenantId, classification.taskClass(), lastUserPrompt(request));
+                if (semanticCached != null) {
+                    return new ResponseEntity<>(semanticCached,
+                        arbiterHeaders(requestId, semanticCached.model(), classification,
+                            "hit-semantic", semanticDecision), HttpStatus.OK);
+                }
+                }
         }
         if (request.stream()) {
             return streamResponse(request, requestId, classification, semanticDecision);
@@ -65,10 +79,30 @@ public class ChatCompletionController {
                         completion.promptTokens() + completion.completionTokens()));
         if (cacheable) {
             exactCache.put(tenantId, request, response);
+            if (semanticDecision.eligible()) {
+                semanticPut(tenantId, classification.taskClass(), lastUserPrompt(request), response);
+            }
         }
         var cacheResult = cacheable ? "miss" : "bypass";
         return new ResponseEntity<>(response,
             arbiterHeaders(requestId, completion.model(), classification, cacheResult, semanticDecision), HttpStatus.OK);
+    }
+
+    private ChatCompletionResponse semanticFind(String tenantId, String taskClass, String prompt) {
+        try {
+            return semanticCache.map(cache -> cache.find(tenantId, taskClass, prompt)).orElse(null);
+        } catch (RuntimeException error) {
+            LOGGER.warn("semantic cache lookup unavailable; continuing without semantic hit", error);
+            return null;
+        }
+    }
+
+    private void semanticPut(String tenantId, String taskClass, String prompt, ChatCompletionResponse response) {
+        try {
+            semanticCache.ifPresent(cache -> cache.put(tenantId, taskClass, prompt, response));
+        } catch (RuntimeException error) {
+            LOGGER.warn("semantic cache write unavailable; response remains valid", error);
+        }
     }
 
     private ResponseEntity<Flux<String>> streamResponse(
