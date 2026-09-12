@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -30,7 +31,7 @@ public final class PgVectorSemanticCache implements SemanticCache {
     private static final String PUT_SQL = """
             INSERT INTO semantic_cache_entries
                 (tenant_id, task_class, prompt, prompt_hash, embedding, response, expires_at)
-            VALUES (?, ?, ?, ?, CAST(? AS vector), CAST(? AS jsonb), now() + ((?::text || ' seconds')::interval))
+            VALUES (?, ?, ?, ?, CAST(? AS vector), CAST(? AS jsonb), ?::timestamptz)
             ON CONFLICT (tenant_id, prompt_hash) DO UPDATE
                 SET response = EXCLUDED.response, embedding = EXCLUDED.embedding,
                     expires_at = EXCLUDED.expires_at
@@ -78,11 +79,12 @@ public final class PgVectorSemanticCache implements SemanticCache {
             ChatCompletionController.ChatCompletionResponse response) {
         try {
             jdbcTemplate.update(PUT_SQL, tenantId, taskClass, prompt, sha256(prompt),
-                    vectorLiteral(embeddingClient.embed(prompt)), objectMapper.writeValueAsString(response), ttlSeconds);
+                    vectorLiteral(embeddingClient.embed(prompt)), objectMapper.writeValueAsString(response),
+                    Instant.now().plusSeconds(ttlSeconds).toString());
         } catch (JsonProcessingException error) {
             throw new IllegalArgumentException("completion is not JSON serializable", error);
         } catch (RuntimeException error) {
-            LOGGER.error("semantic cache write failed for tenant {}", tenantId, error);
+            LOGGER.error("semantic cache write failed for tenant {}: {}", tenantId, error.getMessage());
             throw error;
         }
     }

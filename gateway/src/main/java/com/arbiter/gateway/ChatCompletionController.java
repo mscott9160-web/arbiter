@@ -101,7 +101,7 @@ public class ChatCompletionController {
         try {
             semanticCache.ifPresent(cache -> cache.put(tenantId, taskClass, prompt, response));
         } catch (RuntimeException error) {
-            LOGGER.warn("semantic cache write unavailable; response remains valid", error);
+            LOGGER.warn("semantic cache write unavailable: {}", error.getMessage());
         }
     }
 

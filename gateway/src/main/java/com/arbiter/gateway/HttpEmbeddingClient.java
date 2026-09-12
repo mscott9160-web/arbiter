@@ -1,6 +1,7 @@
 package com.arbiter.gateway;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -20,12 +21,12 @@ public final class HttpEmbeddingClient implements EmbeddingClient {
 
     @Override
     public float[] embed(String text) {
-        var response = client.post()
-                .uri("/embed")
-                .bodyValue(new EmbedRequest(text))
-                .retrieve()
-                .bodyToMono(EmbedResponse.class)
-                .block(Duration.ofSeconds(2));
+        var response = CompletableFuture.supplyAsync(() -> client.post()
+            .uri("/embed")
+            .bodyValue(new EmbedRequest(text))
+            .retrieve()
+            .bodyToMono(EmbedResponse.class)
+            .block(Duration.ofSeconds(2))).join();
         if (response == null || response.embedding() == null || response.embedding().length == 0) {
             throw new IllegalStateException("embedding service returned no vector");
         }
