@@ -64,6 +64,8 @@ The ledger writer batches events, retries transient store failures, and requires
 
 The Postgres Compose service applies `ledger/migrations/V1__create_request_events.sql` on first initialization. The migration creates a UUID primary key on `request_id` and stores the complete event as JSONB.
 
+Compose publishes Postgres on host port `15432` to avoid colliding with an existing local PostgreSQL service on `5432`. Use `127.0.0.1:15432` for gateway connections.
+
 The smoke check is deterministic and does not call a paid provider, AWS, or a local model.
 
 ## Locked architecture
