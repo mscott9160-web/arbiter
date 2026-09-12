@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Component
-@Profile("semantic")
+@Profile("semantic | pgvector")
 public final class HttpEmbeddingClient implements EmbeddingClient {
     private final WebClient client;
 

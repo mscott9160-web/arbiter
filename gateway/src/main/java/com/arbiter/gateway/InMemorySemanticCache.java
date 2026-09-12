@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("semantic")
+@Profile("semantic & !pgvector")
 public final class InMemorySemanticCache implements SemanticCache {
     private final EmbeddingClient embeddingClient;
     private final double threshold;
