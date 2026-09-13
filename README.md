@@ -58,6 +58,8 @@ Semantic-cache eligibility is evaluated before any future vector lookup. The gat
 
 The in-memory semantic adapter is enabled with `SPRING_PROFILES_ACTIVE=semantic`. The database-backed adapter is enabled with `SPRING_PROFILES_ACTIVE=pgvector` and uses the classifier sidecar's `/embed` endpoint plus the `semantic_cache_entries` pgvector table. Both remain reference paths until measured embeddings and cache-poisoning evaluation support production use.
 
+With Docker Postgres and the classifier running, start the database-backed gateway with `make gateway-pgvector`. The profile defaults to Docker Postgres at `127.0.0.1:15432`; override `ARBITER_POSTGRES_*` only when using a different database.
+
 The cache-poisoning harness runs with `make cache-eval` and regenerates the checked-in benchmark artifact. The shipped demo threshold has zero false hits on the held-out near-miss set; this result applies only to the demo embedding version named in the artifact.
 
 The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
