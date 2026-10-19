@@ -1,7 +1,11 @@
 package com.arbiter.gateway;
 
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -21,21 +25,22 @@ public final class HttpClassifierClient implements ClassifierClient {
     @Override
     public ClassificationResult classify(String prompt) {
         try {
-            var response = client.post()
-                    .uri("/classify")
-                    .bodyValue(new ClassifyRequest(prompt))
-                    .retrieve()
-                    .onStatus(HttpStatusCode::isError,
-                            status -> status.createException().flatMap(error ->
-                                reactor.core.publisher.Mono.error(new ResponseStatusException(
-                                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
-                                            "classifier returned " + status.statusCode().value(), error))))
-                    .bodyToMono(ClassificationResult.class)
-                    .block(Duration.ofSeconds(2));
+            var response = CompletableFuture.supplyAsync(() -> client.post()
+                .uri("/classify")
+                .bodyValue(new ClassifyRequest(prompt))
+                .retrieve()
+                .onStatus(HttpStatusCode::isError,
+                    status -> status.createException().flatMap(error ->
+                        reactor.core.publisher.Mono.error(new ResponseStatusException(
+                            org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                            "classifier returned " + status.statusCode().value(), error))))
+                .bodyToMono(ClassifierResponse.class)
+                .block(Duration.ofSeconds(2))).join();
             if (response == null) {
                 throw new IllegalStateException("classifier returned an empty response");
             }
-            return response;
+                return new ClassificationResult(response.complexity(), response.taskClass(),
+                    response.classifierVersion(), response.uncertaintyBand(), response.routeUp());
         } catch (ResponseStatusException error) {
             throw error;
         } catch (RuntimeException error) {
@@ -46,5 +51,15 @@ public final class HttpClassifierClient implements ClassifierClient {
     }
 
     private record ClassifyRequest(String prompt) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ClassifierResponse(
+            double complexity,
+            @JsonProperty("task_class") String taskClass,
+            @JsonProperty("classifier_version") String classifierVersion,
+            @JsonProperty("uncertainty_band") boolean uncertaintyBand,
+            @JsonProperty("route_up") boolean routeUp,
+            Map<String, Double> features) {
     }
 }

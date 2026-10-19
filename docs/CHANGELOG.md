@@ -14,3 +14,4 @@
 - 2026-09-11: Added semantic-cache deny-list policy for temperature, time sensitivity, tool calls, math, and code execution.
 - 2026-09-11: Added an opt-in semantic cache adapter with cosine thresholding and a deterministic demo embedding boundary.
 - 2026-09-11: Added pgvector semantic-cache DDL and a reproducible near-miss cache-poisoning evaluation artifact.
+- 2026-09-12: Added the profile-gated JDBC/pgvector semantic-cache adapter and validated live nearest-neighbor and duplicate behavior.

@@ -56,13 +56,17 @@ The exact cache uses an in-memory adapter by default for deterministic offline t
 
 Semantic-cache eligibility is evaluated before any future vector lookup. The gateway denies temperature above `0.3`, current/date-sensitive prompts, tool calls, `code_execution`, and `math`, and exposes the reason in `x-arbiter-semantic-cache`. Exact caching remains independent of this safety gate.
 
-The semantic adapter is enabled with `SPRING_PROFILES_ACTIVE=semantic` and uses the classifier sidecar's demo `/embed` endpoint. It is a reference path only; pgvector, measured embeddings, and cache-poisoning evaluation are required before production use.
+The in-memory semantic adapter is enabled with `SPRING_PROFILES_ACTIVE=semantic`. The database-backed adapter is enabled with `SPRING_PROFILES_ACTIVE=pgvector` and uses the classifier sidecar's `/embed` endpoint plus the `semantic_cache_entries` pgvector table. Both remain reference paths until measured embeddings and cache-poisoning evaluation support production use.
+
+With Docker Postgres and the classifier running, start the database-backed gateway with `make gateway-pgvector`. The profile defaults to Docker Postgres at `127.0.0.1:15432`; override `ARBITER_POSTGRES_*` only when using a different database.
 
 The cache-poisoning harness runs with `make cache-eval` and regenerates the checked-in benchmark artifact. The shipped demo threshold has zero false hits on the held-out near-miss set; this result applies only to the demo embedding version named in the artifact.
 
 The ledger writer batches events, retries transient store failures, and requires the durable store to deduplicate by `request_id`. The current slice tests the writer against an in-memory store; Postgres persistence and restart-safe delivery are still pending.
 
 The Postgres Compose service applies `ledger/migrations/V1__create_request_events.sql` on first initialization. The migration creates a UUID primary key on `request_id` and stores the complete event as JSONB.
+
+Compose publishes Postgres on host port `15432` to avoid colliding with an existing local PostgreSQL service on `5432`. Use `127.0.0.1:15432` for gateway connections.
 
 The smoke check is deterministic and does not call a paid provider, AWS, or a local model.
 
